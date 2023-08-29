@@ -147,7 +147,7 @@ class AutoHyphenatingText extends StatelessWidget {
         TextStyle? effectiveTextStyle, int lines) {
       if (getTextWidth(
               mergeSyllablesFront(syllables, 0,
-                  allowHyphen: allowHyphenation(lines)),
+                  allowHyphen: lines == effectiveMaxLines()),
               effectiveTextStyle,
               textDirection,
               textScaleFactor) >
@@ -163,7 +163,7 @@ class AutoHyphenatingText extends StatelessWidget {
 
         if (getTextWidth(
                 mergeSyllablesFront(syllables, testIndex,
-                    allowHyphen: allowHyphenation(lines)),
+                    allowHyphen: lines == effectiveMaxLines()),
                 effectiveTextStyle,
                 textDirection,
                 textScaleFactor) >
@@ -282,7 +282,7 @@ class AutoHyphenatingText extends StatelessWidget {
             } else {
               texts.add(TextSpan(
                   text: mergeSyllablesFront(syllables, syllableToUse,
-                      allowHyphen: allowHyphenation(lines))));
+                      allowHyphen: lines == effectiveMaxLines())));
               words.insert(i + 1, mergeSyllablesBack(syllables, syllableToUse));
             }
 
