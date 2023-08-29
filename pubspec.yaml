@@ -14,9 +14,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  # hyphenator_impure: ^0.1.2
-  hyphenator:
-    path: ../hyphenator
+  hyphenator_impure: ^0.1.2
+  # hyphenator:
+  #   path: ../hyphenator
 
 dev_dependencies:
   flutter_test:

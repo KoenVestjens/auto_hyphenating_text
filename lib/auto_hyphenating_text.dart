@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
-import 'package:hyphenator/hyphenator.dart';
 import 'package:flutter/gestures.dart';
+import 'package:hyphenator_impure/hyphenator.dart';
 
 enum AutoHyphenatingTextStyles {
   bold,
