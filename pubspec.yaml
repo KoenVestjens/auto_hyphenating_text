@@ -14,7 +14,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  hyphenator_impure: ^0.1.2
+  hyphenator:
+    git:
+      url: https://github.com/nikitadol/hyphenator
   # hyphenator:
   #   path: ../hyphenator
 
