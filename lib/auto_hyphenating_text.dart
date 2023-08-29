@@ -132,6 +132,9 @@ class AutoHyphenatingText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // This is used as a holder for the links
+    Map<String, String> _links = {};
+
     double getTextWidth(String text, TextStyle? style, TextDirection? direction,
         double? scaleFactor) {
       final TextPainter textPainter = TextPainter(
@@ -147,7 +150,7 @@ class AutoHyphenatingText extends StatelessWidget {
         TextStyle? effectiveTextStyle, int lines) {
       if (getTextWidth(
               mergeSyllablesFront(syllables, 0,
-                  allowHyphen: lines == effectiveMaxLines()),
+                  allowHyphen: allowHyphenation(lines)),
               effectiveTextStyle,
               textDirection,
               textScaleFactor) >
@@ -163,7 +166,7 @@ class AutoHyphenatingText extends StatelessWidget {
 
         if (getTextWidth(
                 mergeSyllablesFront(syllables, testIndex,
-                    allowHyphen: lines == effectiveMaxLines()),
+                    allowHyphen: allowHyphenation(lines)),
                 effectiveTextStyle,
                 textDirection,
                 textScaleFactor) >
@@ -216,7 +219,26 @@ class AutoHyphenatingText extends StatelessWidget {
 
         if (currentLineSpaceUsed + wordWidth <
             constraints.maxWidth - endBuffer) {
-          texts.add(TextSpan(text: words[i]));
+          // TODO: Duplicate
+          if (hasMarkdownLink(words[i])) {
+            Map<String, String> urlLink = getLink(words[i]);
+
+            // Create internal link markdown
+            String text = '__${urlLink['text']!}__';
+
+            _links[text] = urlLink['url']!;
+
+            texts.add(
+              TextSpan(
+                text: text,
+              ),
+            );
+            // Inser a space so that the next word is not merged with the link
+            words.insert(i + 1, '');
+            continue;
+          } else {
+            texts.add(TextSpan(text: words[i]));
+          }
 
           currentLineSpaceUsed += wordWidth;
         } else {
@@ -264,15 +286,31 @@ class AutoHyphenatingText extends StatelessWidget {
               }
             }
 
-            // Ignore hyperlinks TODO: Maybe refactor this
-            if (hasMarkdownBold(words[i]) ||
-                hasMarkdownCode(words[i]) ||
-                hasMarkdownLink(words[i])) {
+            // Ignore markdown words, TODO: for links this is not working properly
+            if (hasMarkdownBold(words[i]) || hasMarkdownCode(words[i])) {
               ignore = true;
             }
 
+            // TODO: Duplicate
+            if (hasMarkdownLink(words[i])) {
+              Map<String, String> urlLink = getLink(words[i]);
+
+              // Create internal link markdown
+              String text = '__${urlLink['text']!}__';
+
+              _links[text] = urlLink['url']!;
+
+              texts.add(
+                TextSpan(
+                  text: text,
+                ),
+              );
+              // Inser a space so that the next word is not merged with the link
+              words.insert(i + 1, '');
+              continue;
+            }
+
             if (ignore) {
-              print(syllables.join());
               texts.add(
                 TextSpan(
                   text: syllables.join(),
@@ -282,7 +320,7 @@ class AutoHyphenatingText extends StatelessWidget {
             } else {
               texts.add(TextSpan(
                   text: mergeSyllablesFront(syllables, syllableToUse,
-                      allowHyphen: lines == effectiveMaxLines())));
+                      allowHyphen: allowHyphenation(lines))));
               words.insert(i + 1, mergeSyllablesBack(syllables, syllableToUse));
             }
 
@@ -342,20 +380,36 @@ class AutoHyphenatingText extends StatelessWidget {
         }
 
         // Link
-        if (hasMarkdownLink(str)) {
-          Map<String, String> urlLink = getLink(str);
+        if (_links.containsKey(texts[i].text!)) {
+          final _text = removeMarkdown(texts[i].text!);
+          final _link = _links[texts[i].text!]!;
+
           texts[i] = TextSpan(
-            text: urlLink['text'],
+            text: _text,
             style: textStyles[AutoHyphenatingTextStyles.link] ?? style!,
             recognizer: TapGestureRecognizer()
               ..onTap = () {
                 if (onTapLink != null) {
-                  onTapLink!(urlLink['url']);
+                  onTapLink!(_link);
                 }
               },
           );
           continue;
         }
+        // if (hasMarkdownLink(str)) {
+        //   Map<String, String> urlLink = getLink(str);
+        //   texts[i] = TextSpan(
+        //     text: urlLink['text'],
+        //     style: textStyles[AutoHyphenatingTextStyles.link] ?? style!,
+        //     recognizer: TapGestureRecognizer()
+        //       ..onTap = () {
+        //         if (onTapLink != null) {
+        //           onTapLink!(urlLink['url']);
+        //         }
+        //       },
+        //   );
+        //   continue;
+        // }
 
         texts[i] = TextSpan(
           text: str,
@@ -396,7 +450,9 @@ class AutoHyphenatingText extends StatelessWidget {
   String removeMarkdown(String text) {
     return text
         .replaceAll(AutoHyphenatingTextStyles.bold.markdown, '')
-        .replaceAll(AutoHyphenatingTextStyles.code.markdown, '');
+        .replaceAll(AutoHyphenatingTextStyles.code.markdown, '')
+        // This is only internally used, so there is no AutoHyphenatingTextStyles for this markdown
+        .replaceAll('__', '');
   }
 
   bool hasMarkdownBold(String str) {
@@ -436,7 +492,6 @@ class AutoHyphenatingText extends StatelessWidget {
 
     final url = str.substring(startIndexUrl + startUrl.length, endIndexUrl);
 
-    // TODO: Only add extra space if needed
     return {'text': text, 'url': url};
   }
 }
