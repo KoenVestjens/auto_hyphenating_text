@@ -416,24 +416,29 @@ class AutoHyphenatingText extends StatelessWidget {
         );
       }
 
-      return Semantics(
-        textDirection: textDirection,
-        label: semanticsLabel ?? text,
-        child: ExcludeSemantics(
-          child: RichText(
-            textDirection: textDirection,
-            strutStyle: strutStyle,
-            locale: locale,
-            softWrap: softWrap ?? true,
-            overflow: overflow ?? TextOverflow.clip,
-            textScaleFactor:
-                textScaleFactor ?? MediaQuery.of(context).textScaleFactor,
-            textWidthBasis: textWidthBasis ?? TextWidthBasis.parent,
-            selectionColor: selectionColor,
-            textAlign: textAlign ?? TextAlign.start,
-            text: TextSpan(
-              style: effectiveTextStyle,
-              children: texts,
+      return Container(
+        width: double.infinity,
+        height: 200, //constraints.maxHeight,
+        color: Colors.yellow,
+        child: Semantics(
+          textDirection: textDirection,
+          label: semanticsLabel ?? text,
+          child: ExcludeSemantics(
+            child: RichText(
+              textDirection: textDirection,
+              strutStyle: strutStyle,
+              locale: locale,
+              softWrap: softWrap ?? true,
+              overflow: overflow ?? TextOverflow.clip,
+              textScaleFactor:
+                  textScaleFactor ?? MediaQuery.of(context).textScaleFactor,
+              textWidthBasis: textWidthBasis ?? TextWidthBasis.parent,
+              selectionColor: selectionColor,
+              textAlign: textAlign ?? TextAlign.start,
+              text: TextSpan(
+                style: effectiveTextStyle,
+                children: texts,
+              ),
             ),
           ),
         ),
