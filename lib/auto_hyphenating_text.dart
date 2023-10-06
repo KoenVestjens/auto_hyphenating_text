@@ -145,6 +145,17 @@ class AutoHyphenatingText extends StatelessWidget {
       return textPainter.size.width;
     }
 
+    double getTextHeight(String text, TextStyle? style,
+        TextDirection? direction, double? scaleFactor) {
+      final TextPainter textPainter = TextPainter(
+        text: TextSpan(text: text, style: style),
+        textScaleFactor: scaleFactor ?? MediaQuery.of(context).textScaleFactor,
+        maxLines: 1,
+        textDirection: direction ?? Directionality.of(context),
+      )..layout();
+      return textPainter.size.height;
+    }
+
     int? getLastSyllableIndex(List<String> syllables, double availableSpace,
         TextStyle? effectiveTextStyle, int lines) {
       if (getTextWidth(
@@ -380,16 +391,16 @@ class AutoHyphenatingText extends StatelessWidget {
 
         // Link
         if (_links.containsKey(texts[i].text!)) {
-          final _text = removeMarkdown(texts[i].text!);
-          final _link = _links[texts[i].text!]!;
+          final text = removeMarkdown(texts[i].text!);
+          final link = _links[texts[i].text!]!;
 
           texts[i] = TextSpan(
-            text: _text,
+            text: text,
             style: textStyles[AutoHyphenatingTextStyles.link] ?? style!,
             recognizer: TapGestureRecognizer()
               ..onTap = () {
                 if (onTapLink != null) {
-                  onTapLink!(_link);
+                  onTapLink!(link);
                 }
               },
           );
@@ -416,33 +427,73 @@ class AutoHyphenatingText extends StatelessWidget {
         );
       }
 
-      return Container(
-        width: double.infinity,
-        height: 200, //constraints.maxHeight,
-        color: Colors.yellow,
-        child: Semantics(
-          textDirection: textDirection,
-          label: semanticsLabel ?? text,
-          child: ExcludeSemantics(
-            child: RichText(
-              textDirection: textDirection,
-              strutStyle: strutStyle,
-              locale: locale,
-              softWrap: softWrap ?? true,
-              overflow: overflow ?? TextOverflow.clip,
-              textScaleFactor:
-                  textScaleFactor ?? MediaQuery.of(context).textScaleFactor,
-              textWidthBasis: textWidthBasis ?? TextWidthBasis.parent,
-              selectionColor: selectionColor,
-              textAlign: textAlign ?? TextAlign.start,
-              text: TextSpan(
-                style: effectiveTextStyle,
-                children: texts,
-              ),
+      print('maxHeight: ${constraints.maxHeight}');
+      print('maxWidth: ${constraints.maxWidth}');
+      print('minHeight: ${constraints.minHeight}');
+      print('minWidth: ${constraints.minWidth}');
+
+      Widget child = LayoutBuilder(
+        builder: (context, constraints) {
+          // Your RichText widget here
+          Widget child = RichText(
+            textDirection: textDirection,
+            strutStyle: strutStyle,
+            locale: locale,
+            softWrap: softWrap ?? true,
+            overflow: overflow ?? TextOverflow.clip,
+            textScaleFactor:
+                textScaleFactor ?? MediaQuery.of(context).textScaleFactor,
+            textWidthBasis: textWidthBasis ?? TextWidthBasis.parent,
+            selectionColor: selectionColor,
+            textAlign: textAlign ?? TextAlign.start,
+            text: TextSpan(
+              style: effectiveTextStyle,
+              children: texts,
             ),
-          ),
+          );
+
+          return SizedBox(
+            height: constraints.maxHeight,
+            child: child,
+          );
+        },
+      );
+
+      return Semantics(
+        textDirection: textDirection,
+        label: semanticsLabel ?? text,
+        child: ExcludeSemantics(
+          child: child,
         ),
       );
+
+      // return Container(
+      //   width: double.infinity,
+      //   height: 60, //constraints.maxHeight,
+      //   color: Colors.yellow,
+      //   child: Semantics(
+      //     textDirection: textDirection,
+      //     label: semanticsLabel ?? text,
+      //     child: ExcludeSemantics(
+      //       child: RichText(
+      //         textDirection: textDirection,
+      //         strutStyle: strutStyle,
+      //         locale: locale,
+      //         softWrap: softWrap ?? true,
+      //         overflow: overflow ?? TextOverflow.clip,
+      //         textScaleFactor:
+      //             textScaleFactor ?? MediaQuery.of(context).textScaleFactor,
+      //         textWidthBasis: textWidthBasis ?? TextWidthBasis.parent,
+      //         selectionColor: selectionColor,
+      //         textAlign: textAlign ?? TextAlign.start,
+      //         text: TextSpan(
+      //           style: effectiveTextStyle,
+      //           children: texts,
+      //         ),
+      //       ),
+      //     ),
+      //   ),
+      // );
     });
   }
 
