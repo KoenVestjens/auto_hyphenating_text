@@ -106,7 +106,6 @@ class _AutoHyphenatingTextState extends State<AutoHyphenatingText> {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      print('test');
       setState(() {});
     });
   }
@@ -212,11 +211,14 @@ class _AutoHyphenatingTextState extends State<AutoHyphenatingText> {
     //       .merge(const TextStyle(fontWeight: FontWeight.bold));
     // }
 
-    print(effectiveTextStyle!.fontSize!);
-
+    double lineHeight = 0;
+    if (widget.style != null) {
+      lineHeight = widget.style!.height ?? 0;
+    }
+    // TODO: Multiple with line height
     return Container(
-      height: effectiveTextStyle!.fontSize! * _lines,
-      color: Colors.red,
+      height: effectiveTextStyle!.fontSize! * _lines * lineHeight,
+      // color: Colors.red,
       child: LayoutBuilder(
         builder: (BuildContext context, BoxConstraints constraints) {
           // Replace variables and split the text on space, dot and comma into words
