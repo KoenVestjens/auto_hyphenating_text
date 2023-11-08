@@ -1,3 +1,5 @@
+// ignore_for_file: must_be_immutable
+
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:hyphenator/hyphenator.dart';
@@ -40,7 +42,7 @@ Future<void> initHyphenationWithLanguages(
 
 /// A replacement for the default text object which supports hyphenation.
 class AutoHyphenatingText extends StatelessWidget {
-  const AutoHyphenatingText(
+  AutoHyphenatingText(
     this.text, {
     this.shouldHyphenate,
     this.language = 'en',
@@ -60,7 +62,7 @@ class AutoHyphenatingText extends StatelessWidget {
     this.semanticsLabel,
     this.textWidthBasis,
     this.selectionColor,
-    this.hyphenationCharacter = '‐',
+    this.hyphenationCharacter = '–',
     this.selectable = false,
     super.key,
   });
@@ -91,6 +93,9 @@ class AutoHyphenatingText extends StatelessWidget {
   final TextWidthBasis? textWidthBasis;
   final Color? selectionColor;
   final bool selectable;
+
+  // This is used to calculate the height of the widget
+  // int testLines = 1;
 
   String mergeSyllablesFront(
       List<String> syllables, int indicesToMergeInclusive,
@@ -132,7 +137,7 @@ class AutoHyphenatingText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // This is used as a holder for the links
-    Map<String, String> _links = {};
+    Map<String, String> links = {};
 
     double getTextWidth(String text, TextStyle? style, TextDirection? direction,
         double? scaleFactor) {
@@ -143,17 +148,6 @@ class AutoHyphenatingText extends StatelessWidget {
         textDirection: direction ?? Directionality.of(context),
       )..layout();
       return textPainter.size.width;
-    }
-
-    double getTextHeight(String text, TextStyle? style,
-        TextDirection? direction, double? scaleFactor) {
-      final TextPainter textPainter = TextPainter(
-        text: TextSpan(text: text, style: style),
-        textScaleFactor: scaleFactor ?? MediaQuery.of(context).textScaleFactor,
-        maxLines: 1,
-        textDirection: direction ?? Directionality.of(context),
-      )..layout();
-      return textPainter.size.height;
     }
 
     int? getLastSyllableIndex(List<String> syllables, double availableSpace,
@@ -216,6 +210,7 @@ class AutoHyphenatingText extends StatelessWidget {
 
       double singleSpaceWidth =
           getTextWidth(' ', effectiveTextStyle, textDirection, textScaleFactor);
+
       double currentLineSpaceUsed = 0;
       int lines = 0;
 
@@ -236,7 +231,7 @@ class AutoHyphenatingText extends StatelessWidget {
             // Create internal link markdown
             String text = '__${urlLink['text']!}__';
 
-            _links[text] = urlLink['url']!;
+            links[text] = urlLink['url']!;
 
             texts.add(
               TextSpan(
@@ -284,6 +279,7 @@ class AutoHyphenatingText extends StatelessWidget {
                 }
                 break;
               }
+              // testLines++;
               texts.add(const TextSpan(text: '\n'));
             }
             continue;
@@ -308,7 +304,7 @@ class AutoHyphenatingText extends StatelessWidget {
               // Create internal link markdown
               String text = '__${urlLink['text']!}__';
 
-              _links[text] = urlLink['url']!;
+              links[text] = urlLink['url']!;
 
               texts.add(
                 TextSpan(
@@ -342,6 +338,7 @@ class AutoHyphenatingText extends StatelessWidget {
               }
               break;
             }
+            // testLines++;
             texts.add(const TextSpan(text: '\n'));
             continue;
           }
@@ -363,18 +360,51 @@ class AutoHyphenatingText extends StatelessWidget {
               }
               break;
             }
+            // testLines++;
             texts.add(const TextSpan(text: '\n'));
           }
         }
       }
 
+      // Determine if the are two markdown words after each other with no space between them. If there is no space between them
+      // and no new line between them, then add a space between them.
+      List<TextSpan> newTexts = [];
       for (int i = 0; i < texts.length; i++) {
-        String str = texts[i].text!;
+        newTexts.add(texts[i]);
+
+        String text = texts[i].text!;
+        String nextText = '';
+        if (i + 1 < texts.length) {
+          nextText = texts[i + 1].text!;
+        }
+
+        if ((hasMarkdownBold(text) && hasMarkdownBold(nextText)) ||
+            (hasMarkdownCode(text) && hasMarkdownCode(nextText)) ||
+            (hasMarkdownLink(text) && hasMarkdownLink(nextText))) {
+          newTexts.add(TextSpan(text: ' '));
+          continue;
+        }
+
+        // Check if the next text is no markdown and no new line or space, then add space
+        if ((hasMarkdownBold(text) ||
+                hasMarkdownCode(text) ||
+                hasMarkdownLink(text)) &&
+            (!nextText.startsWith('__') &&
+                !nextText.startsWith('\n') &&
+                !nextText.startsWith(' '))) {
+          newTexts.add(TextSpan(text: ' '));
+          continue;
+        }
+      }
+
+      // Remove markdown
+      for (int i = 0; i < newTexts.length; i++) {
+        String str = newTexts[i].text!;
 
         // Bold
         if (hasMarkdownBold(str)) {
-          texts[i] = TextSpan(
-            text: removeMarkdown(texts[i].text!),
+          newTexts[i] = TextSpan(
+            text: removeMarkdown(newTexts, newTexts[i].text!),
             style: textStyles[AutoHyphenatingTextStyles.bold] ?? style!,
           );
           continue;
@@ -382,19 +412,19 @@ class AutoHyphenatingText extends StatelessWidget {
 
         // Code
         if (hasMarkdownCode(str)) {
-          texts[i] = TextSpan(
-            text: removeMarkdown(str),
+          newTexts[i] = TextSpan(
+            text: removeMarkdown(newTexts, str),
             style: textStyles[AutoHyphenatingTextStyles.code] ?? style!,
           );
           continue;
         }
 
         // Link
-        if (_links.containsKey(texts[i].text!)) {
-          final text = removeMarkdown(texts[i].text!);
-          final link = _links[texts[i].text!]!;
+        if (links.containsKey(newTexts[i].text!)) {
+          final text = removeMarkdown(newTexts, newTexts[i].text!);
+          final link = links[newTexts[i].text!]!;
 
-          texts[i] = TextSpan(
+          newTexts[i] = TextSpan(
             text: text,
             style: textStyles[AutoHyphenatingTextStyles.link] ?? style!,
             recognizer: TapGestureRecognizer()
@@ -421,21 +451,24 @@ class AutoHyphenatingText extends StatelessWidget {
         //   continue;
         // }
 
-        texts[i] = TextSpan(
+        newTexts[i] = TextSpan(
           text: str,
           style: style,
         );
       }
 
-      print('maxHeight: ${constraints.maxHeight}');
-      print('maxWidth: ${constraints.maxWidth}');
-      print('minHeight: ${constraints.minHeight}');
-      print('minWidth: ${constraints.minWidth}');
+      // print('There are $testLines lines in $text');
 
-      Widget child = LayoutBuilder(
-        builder: (context, constraints) {
-          // Your RichText widget here
-          Widget child = RichText(
+      return
+          //  SizedBox(
+          //   width: double.infinity,
+          //   height: testLines * 24,
+          //   child:
+          Semantics(
+        textDirection: textDirection,
+        label: semanticsLabel ?? text,
+        child: ExcludeSemantics(
+          child: RichText(
             textDirection: textDirection,
             strutStyle: strutStyle,
             locale: locale,
@@ -448,52 +481,12 @@ class AutoHyphenatingText extends StatelessWidget {
             textAlign: textAlign ?? TextAlign.start,
             text: TextSpan(
               style: effectiveTextStyle,
-              children: texts,
+              children: newTexts,
             ),
-          );
-
-          return SizedBox(
-            height: constraints.maxHeight,
-            child: child,
-          );
-        },
-      );
-
-      return Semantics(
-        textDirection: textDirection,
-        label: semanticsLabel ?? text,
-        child: ExcludeSemantics(
-          child: child,
+          ),
         ),
+        // ),
       );
-
-      // return Container(
-      //   width: double.infinity,
-      //   height: 60, //constraints.maxHeight,
-      //   color: Colors.yellow,
-      //   child: Semantics(
-      //     textDirection: textDirection,
-      //     label: semanticsLabel ?? text,
-      //     child: ExcludeSemantics(
-      //       child: RichText(
-      //         textDirection: textDirection,
-      //         strutStyle: strutStyle,
-      //         locale: locale,
-      //         softWrap: softWrap ?? true,
-      //         overflow: overflow ?? TextOverflow.clip,
-      //         textScaleFactor:
-      //             textScaleFactor ?? MediaQuery.of(context).textScaleFactor,
-      //         textWidthBasis: textWidthBasis ?? TextWidthBasis.parent,
-      //         selectionColor: selectionColor,
-      //         textAlign: textAlign ?? TextAlign.start,
-      //         text: TextSpan(
-      //           style: effectiveTextStyle,
-      //           children: texts,
-      //         ),
-      //       ),
-      //     ),
-      //   ),
-      // );
     });
   }
 
@@ -502,7 +495,7 @@ class AutoHyphenatingText extends StatelessWidget {
         .fold(text, (prev, e) => prev.replaceAll(e.key, e.value));
   }
 
-  String removeMarkdown(String text) {
+  String removeMarkdown(List<TextSpan> texts, String text) {
     return text
         .replaceAll(AutoHyphenatingTextStyles.bold.markdown, '')
         .replaceAll(AutoHyphenatingTextStyles.code.markdown, '')
@@ -511,12 +504,12 @@ class AutoHyphenatingText extends StatelessWidget {
   }
 
   bool hasMarkdownBold(String str) {
-    return str.startsWith(AutoHyphenatingTextStyles.bold.markdown) &&
+    return str.startsWith(AutoHyphenatingTextStyles.bold.markdown) ||
         str.endsWith(AutoHyphenatingTextStyles.bold.markdown);
   }
 
   bool hasMarkdownCode(String str) {
-    return str.startsWith(AutoHyphenatingTextStyles.code.markdown) &&
+    return str.startsWith(AutoHyphenatingTextStyles.code.markdown) ||
         str.endsWith(AutoHyphenatingTextStyles.code.markdown);
   }
 
