@@ -196,8 +196,8 @@ class AutoHyphenatingText extends StatelessWidget {
 
     return LayoutBuilder(
         builder: (BuildContext context, BoxConstraints constraints) {
-      // Replace variables and split text into words
-      List<String> words = replaceVariables(text).split(' ');
+      // Replace variables and split the text on space, dot and comma into words
+      List<String> words = replaceVariables(text).split(RegExp(r'[ ,.]'));
       List<TextSpan> texts = <TextSpan>[];
 
       assert(globalLoaders.isNotEmpty,
@@ -457,14 +457,7 @@ class AutoHyphenatingText extends StatelessWidget {
         );
       }
 
-      // print('There are $testLines lines in $text');
-
-      return
-          //  SizedBox(
-          //   width: double.infinity,
-          //   height: testLines * 24,
-          //   child:
-          Semantics(
+      return Semantics(
         textDirection: textDirection,
         label: semanticsLabel ?? text,
         child: ExcludeSemantics(
@@ -473,7 +466,6 @@ class AutoHyphenatingText extends StatelessWidget {
             strutStyle: strutStyle,
             locale: locale,
             softWrap: softWrap ?? true,
-            overflow: overflow ?? TextOverflow.clip,
             textScaleFactor:
                 textScaleFactor ?? MediaQuery.of(context).textScaleFactor,
             textWidthBasis: textWidthBasis ?? TextWidthBasis.parent,
@@ -485,7 +477,6 @@ class AutoHyphenatingText extends StatelessWidget {
             ),
           ),
         ),
-        // ),
       );
     });
   }
