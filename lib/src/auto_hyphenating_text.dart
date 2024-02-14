@@ -15,8 +15,9 @@ Future<void> initHyphenation(
 
 /// A replacement for the default text object which supports hyphenation.
 class AutoHyphenatingText extends StatelessWidget {
-  const AutoHyphenatingText(
+  AutoHyphenatingText(
     this.text, {
+    this.count,
     this.shouldHyphenate,
     this.loader,
     this.style,
@@ -37,6 +38,7 @@ class AutoHyphenatingText extends StatelessWidget {
   });
 
   final String text;
+  int? count;
 
   /// An object that allows for computing acceptable hyphenation locations.
   final ResourceLoader? loader;
@@ -299,6 +301,10 @@ class AutoHyphenatingText extends StatelessWidget {
           child: richText,
         );
       }
+
+      count = lines + 1;
+      print(count);
+
       return Semantics(
         textDirection: textDirection,
         label: semanticsLabel ?? text,
