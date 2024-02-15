@@ -230,6 +230,7 @@ class _AutoHyphenatingTextState extends State<AutoHyphenatingText> {
 
     double currentLineSpaceUsed = 0;
     int lines = 0;
+    int testLines = 0;
 
     double endBuffer = widget.style?.overflow == TextOverflow.ellipsis
         ? getTextWidth(
@@ -292,7 +293,7 @@ class _AutoHyphenatingTextState extends State<AutoHyphenatingText> {
               }
               break;
             }
-            // testLines++;
+            testLines++;
             texts.add(const TextSpan(text: '\n'));
           }
           continue;
@@ -351,7 +352,7 @@ class _AutoHyphenatingTextState extends State<AutoHyphenatingText> {
             }
             break;
           }
-          // testLines++;
+          testLines++;
           texts.add(const TextSpan(text: '\n'));
           continue;
         }
@@ -373,7 +374,7 @@ class _AutoHyphenatingTextState extends State<AutoHyphenatingText> {
             }
             break;
           }
-          // testLines++;
+          testLines++;
           texts.add(const TextSpan(text: '\n'));
         }
       }

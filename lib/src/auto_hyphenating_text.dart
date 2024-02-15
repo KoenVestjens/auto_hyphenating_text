@@ -305,15 +305,11 @@ class AutoHyphenatingText extends StatelessWidget {
       count = lines + 1;
       print(count);
 
-      return Container(
-        height: 300,
-        color: Colors.red,
-        child: Semantics(
-          textDirection: textDirection,
-          label: semanticsLabel ?? text,
-          child: ExcludeSemantics(
-            child: richText,
-          ),
+      return Semantics(
+        textDirection: textDirection,
+        label: semanticsLabel ?? text,
+        child: ExcludeSemantics(
+          child: richText,
         ),
       );
     });
