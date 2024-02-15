@@ -99,17 +99,6 @@ class AutoHyphenatingText extends StatefulWidget {
 }
 
 class _AutoHyphenatingTextState extends State<AutoHyphenatingText> {
-  int _lines = 0;
-
-  // @override
-  // void initState() {
-  //   super.initState();
-
-  //   WidgetsBinding.instance.addPostFrameCallback((_) {
-  //     setState(() {});
-  //   });
-  // }
-
   // This is used to calculate the height of the widget
   String mergeSyllablesFront(
       List<String> syllables, int indicesToMergeInclusive,
@@ -484,32 +473,31 @@ class _AutoHyphenatingTextState extends State<AutoHyphenatingText> {
       );
     }
 
-    // _lines = lines + 1;
-
-    return Semantics(
-      textDirection: widget.textDirection,
-      label: widget.semanticsLabel ?? widget.text,
-      child: ExcludeSemantics(
-        child: RichText(
-          textDirection: widget.textDirection,
-          strutStyle: widget.strutStyle,
-          locale: widget.locale,
-          softWrap: widget.softWrap ?? true,
-          textScaleFactor:
-              widget.textScaleFactor ?? MediaQuery.of(context).textScaleFactor,
-          textWidthBasis: widget.textWidthBasis ?? TextWidthBasis.parent,
-          selectionColor: widget.selectionColor,
-          textAlign: widget.textAlign ?? TextAlign.start,
-          text: TextSpan(
-            style: effectiveTextStyle,
-            children: newTexts,
+    return Container(
+      height: 150,
+      color: Colors.red,
+      child: Semantics(
+        textDirection: widget.textDirection,
+        label: widget.semanticsLabel ?? widget.text,
+        child: ExcludeSemantics(
+          child: RichText(
+            textDirection: widget.textDirection,
+            strutStyle: widget.strutStyle,
+            locale: widget.locale,
+            softWrap: widget.softWrap ?? true,
+            textScaleFactor: widget.textScaleFactor ??
+                MediaQuery.of(context).textScaleFactor,
+            textWidthBasis: widget.textWidthBasis ?? TextWidthBasis.parent,
+            selectionColor: widget.selectionColor,
+            textAlign: widget.textAlign ?? TextAlign.start,
+            text: TextSpan(
+              style: effectiveTextStyle,
+              children: newTexts,
+            ),
           ),
         ),
       ),
     );
-    //     },
-    //   ),
-    // );
   }
 
   String replaceVariables(String text) {
