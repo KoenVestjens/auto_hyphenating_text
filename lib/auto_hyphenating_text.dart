@@ -207,297 +207,303 @@ class _AutoHyphenatingTextState extends State<AutoHyphenatingText> {
     // }
 
     // TODO: Multiple with line height
-    // return Container(
-    //   height: effectiveTextStyle!.fontSize! * _lines * lineHeight,
-    //   // color: Colors.red,
-    //   child: LayoutBuilder(
-    //     builder: (BuildContext context, BoxConstraints constraints) {
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        // Replace variables and split the text on space, dot and comma into words
+        List<String> words =
+            replaceVariables(widget.text).split(RegExp(r'[ ,.]'));
+        List<TextSpan> texts = <TextSpan>[];
 
-    // Replace variables and split the text on space, dot and comma into words
-    List<String> words = replaceVariables(widget.text).split(RegExp(r'[ ,.]'));
-    List<TextSpan> texts = <TextSpan>[];
+        assert(globalLoaders.isNotEmpty,
+            'AutoHyphenatingText not initialized! Remember to call initHyphenation().');
 
-    assert(globalLoaders.isNotEmpty,
-        'AutoHyphenatingText not initialized! Remember to call initHyphenation().');
+        final Hyphenator hyphenator = Hyphenator(
+          resource: globalLoaders[widget.language] ?? globalLoaders['en']!,
+          hyphenateSymbol: '_',
+        );
 
-    final Hyphenator hyphenator = Hyphenator(
-      resource: globalLoaders[widget.language] ?? globalLoaders['en']!,
-      hyphenateSymbol: '_',
-    );
+        double singleSpaceWidth = getTextWidth(' ', effectiveTextStyle,
+            widget.textDirection, widget.textScaleFactor);
 
-    double singleSpaceWidth = getTextWidth(
-        ' ', effectiveTextStyle, widget.textDirection, widget.textScaleFactor);
+        double currentLineSpaceUsed = 0;
+        int lines = 0;
+        int testLines = 0;
 
-    double currentLineSpaceUsed = 0;
-    int lines = 0;
-    int testLines = 0;
+        double endBuffer = widget.style?.overflow == TextOverflow.ellipsis
+            ? getTextWidth(
+                '…', widget.style, widget.textDirection, widget.textScaleFactor)
+            : 0;
 
-    double endBuffer = widget.style?.overflow == TextOverflow.ellipsis
-        ? getTextWidth(
-            '…', widget.style, widget.textDirection, widget.textScaleFactor)
-        : 0;
+        for (int i = 0; i < words.length; i++) {
+          double wordWidth = getTextWidth(words[i], effectiveTextStyle,
+              widget.textDirection, widget.textScaleFactor);
 
-    for (int i = 0; i < words.length; i++) {
-      double wordWidth = getTextWidth(words[i], effectiveTextStyle,
-          widget.textDirection, widget.textScaleFactor);
+          if (currentLineSpaceUsed + wordWidth < maxWidth - endBuffer) {
+            // TODO: Duplicate
+            if (hasMarkdownLink(words[i])) {
+              Map<String, String> urlLink = getLink(words[i]);
 
-      if (currentLineSpaceUsed + wordWidth < maxWidth - endBuffer) {
-        // TODO: Duplicate
-        if (hasMarkdownLink(words[i])) {
-          Map<String, String> urlLink = getLink(words[i]);
+              // Create internal link markdown
+              String text = '__${urlLink['text']!}__';
 
-          // Create internal link markdown
-          String text = '__${urlLink['text']!}__';
+              links[text] = urlLink['url']!;
 
-          links[text] = urlLink['url']!;
+              texts.add(
+                TextSpan(
+                  text: text,
+                ),
+              );
+              // Inser a space so that the next word is not merged with the link
+              words.insert(i + 1, '');
+              continue;
+            } else {
+              texts.add(TextSpan(text: words[i]));
+            }
 
-          texts.add(
-            TextSpan(
-              text: text,
-            ),
-          );
-          // Inser a space so that the next word is not merged with the link
-          words.insert(i + 1, '');
-          continue;
-        } else {
-          texts.add(TextSpan(text: words[i]));
-        }
-
-        currentLineSpaceUsed += wordWidth;
-      } else {
-        final List<String> syllables = words[i].length == 1
-            ? <String>[words[i]]
-            : hyphenator.hyphenateWordToList(words[i]);
-        final int? syllableToUse = words[i].length == 1
-            ? null
-            : getLastSyllableIndex(syllables, maxWidth - currentLineSpaceUsed,
-                effectiveTextStyle, lines);
-
-        if (syllableToUse == null ||
-            (widget.shouldHyphenate != null &&
-                !widget.shouldHyphenate!(
-                    maxWidth, currentLineSpaceUsed, wordWidth))) {
-          if (currentLineSpaceUsed == 0) {
-            texts.add(TextSpan(text: words[i]));
             currentLineSpaceUsed += wordWidth;
           } else {
-            i--;
-            if (texts.last == const TextSpan(text: ' ')) {
-              texts.removeLast();
-            }
-            currentLineSpaceUsed = 0;
-            lines++;
-            if (effectiveMaxLines() != null && lines >= effectiveMaxLines()!) {
-              if (widget.overflow == TextOverflow.ellipsis) {
-                texts.add(const TextSpan(text: '…'));
+            final List<String> syllables = words[i].length == 1
+                ? <String>[words[i]]
+                : hyphenator.hyphenateWordToList(words[i]);
+            final int? syllableToUse = words[i].length == 1
+                ? null
+                : getLastSyllableIndex(syllables,
+                    maxWidth - currentLineSpaceUsed, effectiveTextStyle, lines);
+
+            if (syllableToUse == null ||
+                (widget.shouldHyphenate != null &&
+                    !widget.shouldHyphenate!(
+                        maxWidth, currentLineSpaceUsed, wordWidth))) {
+              if (currentLineSpaceUsed == 0) {
+                texts.add(TextSpan(text: words[i]));
+                currentLineSpaceUsed += wordWidth;
+              } else {
+                i--;
+                if (texts.last == const TextSpan(text: ' ')) {
+                  texts.removeLast();
+                }
+                currentLineSpaceUsed = 0;
+                lines++;
+                if (effectiveMaxLines() != null &&
+                    lines >= effectiveMaxLines()!) {
+                  if (widget.overflow == TextOverflow.ellipsis) {
+                    texts.add(const TextSpan(text: '…'));
+                  }
+                  break;
+                }
+                testLines++;
+                texts.add(const TextSpan(text: '\n'));
               }
-              break;
+              continue;
+            } else {
+              // Ignore variables
+              bool ignore = false;
+              for (String ignoreWord in widget.ignoreWords) {
+                if (words[i].contains(ignoreWord)) {
+                  ignore = true;
+                }
+              }
+
+              // Ignore markdown words, TODO: for links this is not working properly
+              if (hasMarkdownBold(words[i]) || hasMarkdownCode(words[i])) {
+                ignore = true;
+              }
+
+              // TODO: Duplicate
+              if (hasMarkdownLink(words[i])) {
+                Map<String, String> urlLink = getLink(words[i]);
+
+                // Create internal link markdown
+                String text = '__${urlLink['text']!}__';
+
+                links[text] = urlLink['url']!;
+
+                texts.add(
+                  TextSpan(
+                    text: text,
+                  ),
+                );
+                // Inser a space so that the next word is not merged with the link
+                words.insert(i + 1, '');
+                continue;
+              }
+
+              if (ignore) {
+                texts.add(
+                  TextSpan(
+                    text: syllables.join(),
+                  ),
+                );
+                continue;
+              } else {
+                texts.add(TextSpan(
+                    text: mergeSyllablesFront(syllables, syllableToUse,
+                        allowHyphen: allowHyphenation(lines))));
+                words.insert(
+                    i + 1, mergeSyllablesBack(syllables, syllableToUse));
+              }
+
+              currentLineSpaceUsed = 0;
+              lines++;
+              if (effectiveMaxLines() != null &&
+                  lines >= effectiveMaxLines()!) {
+                if (widget.overflow == TextOverflow.ellipsis) {
+                  texts.add(const TextSpan(text: '…'));
+                }
+                break;
+              }
+              testLines++;
+              texts.add(const TextSpan(text: '\n'));
+              continue;
             }
-            testLines++;
-            texts.add(const TextSpan(text: '\n'));
           }
-          continue;
-        } else {
-          // Ignore variables
-          bool ignore = false;
-          for (String ignoreWord in widget.ignoreWords) {
-            if (words[i].contains(ignoreWord)) {
-              ignore = true;
+
+          if (i != words.length - 1) {
+            if (currentLineSpaceUsed + singleSpaceWidth < maxWidth) {
+              texts.add(const TextSpan(text: ' '));
+              currentLineSpaceUsed += singleSpaceWidth;
+            } else {
+              if (texts.last == const TextSpan(text: ' ')) {
+                texts.removeLast();
+              }
+              currentLineSpaceUsed = 0;
+              lines++;
+              if (effectiveMaxLines() != null &&
+                  lines >= effectiveMaxLines()!) {
+                if (widget.overflow == TextOverflow.ellipsis) {
+                  texts.add(const TextSpan(text: '…'));
+                }
+                break;
+              }
+              testLines++;
+              texts.add(const TextSpan(text: '\n'));
             }
           }
+        }
 
-          // Ignore markdown words, TODO: for links this is not working properly
-          if (hasMarkdownBold(words[i]) || hasMarkdownCode(words[i])) {
-            ignore = true;
+        // Determine if the are two markdown words after each other with no space between them. If there is no space between them
+        // and no new line between them, then add a space between them.
+        List<TextSpan> newTexts = [];
+        for (int i = 0; i < texts.length; i++) {
+          newTexts.add(texts[i]);
+
+          String text = texts[i].text!;
+          String nextText = '';
+          if (i + 1 < texts.length) {
+            nextText = texts[i + 1].text!;
           }
 
-          // TODO: Duplicate
-          if (hasMarkdownLink(words[i])) {
-            Map<String, String> urlLink = getLink(words[i]);
-
-            // Create internal link markdown
-            String text = '__${urlLink['text']!}__';
-
-            links[text] = urlLink['url']!;
-
-            texts.add(
-              TextSpan(
-                text: text,
-              ),
-            );
-            // Inser a space so that the next word is not merged with the link
-            words.insert(i + 1, '');
+          if ((hasMarkdownBold(text) && hasMarkdownBold(nextText)) ||
+              (hasMarkdownCode(text) && hasMarkdownCode(nextText)) ||
+              (hasMarkdownLink(text) && hasMarkdownLink(nextText))) {
+            newTexts.add(TextSpan(text: ' '));
             continue;
           }
 
-          if (ignore) {
-            texts.add(
-              TextSpan(
-                text: syllables.join(),
-              ),
+          // Check if the next text is no markdown and no new line or space, then add space
+          if ((hasMarkdownBold(text) ||
+                  hasMarkdownCode(text) ||
+                  hasMarkdownLink(text)) &&
+              (!nextText.startsWith('__') &&
+                  !nextText.startsWith('\n') &&
+                  !nextText.startsWith(' '))) {
+            newTexts.add(TextSpan(text: ' '));
+            continue;
+          }
+        }
+
+        // Remove markdown
+        for (int i = 0; i < newTexts.length; i++) {
+          String str = newTexts[i].text!;
+
+          // Bold
+          if (hasMarkdownBold(str)) {
+            newTexts[i] = TextSpan(
+              text: removeMarkdown(newTexts, newTexts[i].text!),
+              style: widget.textStyles[AutoHyphenatingTextStyles.bold] ??
+                  widget.style!,
             );
             continue;
-          } else {
-            texts.add(TextSpan(
-                text: mergeSyllablesFront(syllables, syllableToUse,
-                    allowHyphen: allowHyphenation(lines))));
-            words.insert(i + 1, mergeSyllablesBack(syllables, syllableToUse));
           }
 
-          currentLineSpaceUsed = 0;
-          lines++;
-          if (effectiveMaxLines() != null && lines >= effectiveMaxLines()!) {
-            if (widget.overflow == TextOverflow.ellipsis) {
-              texts.add(const TextSpan(text: '…'));
-            }
-            break;
+          // Code
+          if (hasMarkdownCode(str)) {
+            newTexts[i] = TextSpan(
+              text: removeMarkdown(newTexts, str),
+              style: widget.textStyles[AutoHyphenatingTextStyles.code] ??
+                  widget.style!,
+            );
+            continue;
           }
-          testLines++;
-          texts.add(const TextSpan(text: '\n'));
-          continue;
+
+          // Link
+          if (links.containsKey(newTexts[i].text!)) {
+            final text = removeMarkdown(newTexts, newTexts[i].text!);
+            final link = links[newTexts[i].text!]!;
+
+            newTexts[i] = TextSpan(
+              text: text,
+              style: widget.textStyles[AutoHyphenatingTextStyles.link] ??
+                  widget.style!,
+              recognizer: TapGestureRecognizer()
+                ..onTap = () {
+                  if (widget.onTapLink != null) {
+                    widget.onTapLink!(link);
+                  }
+                },
+            );
+            continue;
+          }
+          // if (hasMarkdownLink(str)) {
+          //   Map<String, String> urlLink = getLink(str);
+          //   texts[i] = TextSpan(
+          //     text: urlLink['text'],
+          //     style: textStyles[AutoHyphenatingTextStyles.link] ?? style!,
+          //     recognizer: TapGestureRecognizer()
+          //       ..onTap = () {
+          //         if (onTapLink != null) {
+          //           onTapLink!(urlLink['url']);
+          //         }
+          //       },
+          //   );
+          //   continue;
+          // }
+
+          newTexts[i] = TextSpan(
+            text: str,
+            style: widget.style,
+          );
         }
-      }
 
-      if (i != words.length - 1) {
-        if (currentLineSpaceUsed + singleSpaceWidth < maxWidth) {
-          texts.add(const TextSpan(text: ' '));
-          currentLineSpaceUsed += singleSpaceWidth;
-        } else {
-          if (texts.last == const TextSpan(text: ' ')) {
-            texts.removeLast();
-          }
-          currentLineSpaceUsed = 0;
-          lines++;
-          if (effectiveMaxLines() != null && lines >= effectiveMaxLines()!) {
-            if (widget.overflow == TextOverflow.ellipsis) {
-              texts.add(const TextSpan(text: '…'));
-            }
-            break;
-          }
-          testLines++;
-          texts.add(const TextSpan(text: '\n'));
-        }
-      }
-    }
+        print('lines: $lines');
+        print('testLines: $testLines');
 
-    // Determine if the are two markdown words after each other with no space between them. If there is no space between them
-    // and no new line between them, then add a space between them.
-    List<TextSpan> newTexts = [];
-    for (int i = 0; i < texts.length; i++) {
-      newTexts.add(texts[i]);
-
-      String text = texts[i].text!;
-      String nextText = '';
-      if (i + 1 < texts.length) {
-        nextText = texts[i + 1].text!;
-      }
-
-      if ((hasMarkdownBold(text) && hasMarkdownBold(nextText)) ||
-          (hasMarkdownCode(text) && hasMarkdownCode(nextText)) ||
-          (hasMarkdownLink(text) && hasMarkdownLink(nextText))) {
-        newTexts.add(TextSpan(text: ' '));
-        continue;
-      }
-
-      // Check if the next text is no markdown and no new line or space, then add space
-      if ((hasMarkdownBold(text) ||
-              hasMarkdownCode(text) ||
-              hasMarkdownLink(text)) &&
-          (!nextText.startsWith('__') &&
-              !nextText.startsWith('\n') &&
-              !nextText.startsWith(' '))) {
-        newTexts.add(TextSpan(text: ' '));
-        continue;
-      }
-    }
-
-    // Remove markdown
-    for (int i = 0; i < newTexts.length; i++) {
-      String str = newTexts[i].text!;
-
-      // Bold
-      if (hasMarkdownBold(str)) {
-        newTexts[i] = TextSpan(
-          text: removeMarkdown(newTexts, newTexts[i].text!),
-          style: widget.textStyles[AutoHyphenatingTextStyles.bold] ??
-              widget.style!,
-        );
-        continue;
-      }
-
-      // Code
-      if (hasMarkdownCode(str)) {
-        newTexts[i] = TextSpan(
-          text: removeMarkdown(newTexts, str),
-          style: widget.textStyles[AutoHyphenatingTextStyles.code] ??
-              widget.style!,
-        );
-        continue;
-      }
-
-      // Link
-      if (links.containsKey(newTexts[i].text!)) {
-        final text = removeMarkdown(newTexts, newTexts[i].text!);
-        final link = links[newTexts[i].text!]!;
-
-        newTexts[i] = TextSpan(
-          text: text,
-          style: widget.textStyles[AutoHyphenatingTextStyles.link] ??
-              widget.style!,
-          recognizer: TapGestureRecognizer()
-            ..onTap = () {
-              if (widget.onTapLink != null) {
-                widget.onTapLink!(link);
-              }
-            },
-        );
-        continue;
-      }
-      // if (hasMarkdownLink(str)) {
-      //   Map<String, String> urlLink = getLink(str);
-      //   texts[i] = TextSpan(
-      //     text: urlLink['text'],
-      //     style: textStyles[AutoHyphenatingTextStyles.link] ?? style!,
-      //     recognizer: TapGestureRecognizer()
-      //       ..onTap = () {
-      //         if (onTapLink != null) {
-      //           onTapLink!(urlLink['url']);
-      //         }
-      //       },
-      //   );
-      //   continue;
-      // }
-
-      newTexts[i] = TextSpan(
-        text: str,
-        style: widget.style,
-      );
-    }
-
-    return Container(
-      height: 150,
-      color: Colors.red,
-      child: Semantics(
-        textDirection: widget.textDirection,
-        label: widget.semanticsLabel ?? widget.text,
-        child: ExcludeSemantics(
-          child: RichText(
+        return Container(
+          height: 150,
+          color: Colors.red,
+          child: Semantics(
             textDirection: widget.textDirection,
-            strutStyle: widget.strutStyle,
-            locale: widget.locale,
-            softWrap: widget.softWrap ?? true,
-            textScaleFactor: widget.textScaleFactor ??
-                MediaQuery.of(context).textScaleFactor,
-            textWidthBasis: widget.textWidthBasis ?? TextWidthBasis.parent,
-            selectionColor: widget.selectionColor,
-            textAlign: widget.textAlign ?? TextAlign.start,
-            text: TextSpan(
-              style: effectiveTextStyle,
-              children: newTexts,
+            label: widget.semanticsLabel ?? widget.text,
+            child: ExcludeSemantics(
+              child: RichText(
+                textDirection: widget.textDirection,
+                strutStyle: widget.strutStyle,
+                locale: widget.locale,
+                softWrap: widget.softWrap ?? true,
+                textScaleFactor: widget.textScaleFactor ??
+                    MediaQuery.of(context).textScaleFactor,
+                textWidthBasis: widget.textWidthBasis ?? TextWidthBasis.parent,
+                selectionColor: widget.selectionColor,
+                textAlign: widget.textAlign ?? TextAlign.start,
+                text: TextSpan(
+                  style: effectiveTextStyle,
+                  children: newTexts,
+                ),
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
